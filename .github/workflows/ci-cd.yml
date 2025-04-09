@@ -22,14 +22,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 4. Сборка и пуш образа для isdockero/onliver-room-manager:latest
+      # 4. Сборка и пуш образа для isdockero/onliver-translation-streamer:latest
       - name: Build and Push Processor Image
         uses: docker/build-push-action@v4
         with:
-          context: ./room_manager
-          file: ./room_manager/Dockerfile
+          context: ./translation_streamer
+          file: ./translation_streamer/Dockerfile
           push: true
-          tags: isdockero/onliver-room-manager:latest
+          tags: isdockero/onliver-translation-streamer:latest
 
       # Остановка работающего стека и удаление старого образа
       - name: Stop running stack and remove old image
@@ -41,7 +41,7 @@ jobs:
           script: |
             sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN  }}
             echo "Stopping existing stack..."
-            sudo docker stack rm onliver_room_manager_stack || true
+            sudo docker stack rm onliver-translation-stack || true
             echo "Waiting for the stack to stop..."
 
       # Удаляем существующий deploy на сервере с использованием sudo
@@ -77,4 +77,4 @@ jobs:
             sudo docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN  }}
             echo "Deploying new stack..."
             ls
-            sudo docker stack deploy --detach=true -c ~/deploy/docker-compose.yaml onliver_room_manager_stack
+            sudo docker stack deploy --detach=true -c ~/deploy/docker-compose.yaml onliver-translation-stack
