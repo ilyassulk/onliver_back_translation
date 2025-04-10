@@ -1,14 +1,21 @@
 version: '3.8'
 
 services:
-  room-manager:
+  translation-streamer:
     image: isdockero/onliver-translation-streamer:latest
+    ports:
+      - target: 8080
+        published: 8081
+        protocol: tcp
     networks:
       - service-network
     deploy:
       replicas: 1
       restart_policy:
         condition: any
+    depends_on:
+      - minio
+      - livekit
 
 
 networks:

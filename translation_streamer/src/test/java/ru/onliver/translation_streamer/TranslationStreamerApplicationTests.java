@@ -1,13 +1,13 @@
-package ru.onliver.film_streamer;
+package ru.onliver.translation_streamer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class FilmStreamerApplicationTests {
+class TranslationStreamerApplicationTests {
 
-    @Test
-    void contextLoads() {
-    }
+	@Test
+	void contextLoads() {
+	}
 
 }
