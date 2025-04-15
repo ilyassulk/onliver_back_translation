@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: translation_streamer
+
+
+server:
+  port: 8080
+  ssl:
+    enabled: false
+
+livekit:
+  host: http://onliver.ru:7880
+  apiKey: APIXMCTJEXDBghU
+  secret: laxpDMZwSmNlxvjHzG8YnZsti8ofCMRlY9H6OAL7EeL
+
+minio:
+  endpoint: http://onliver.ru:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: film
+
+# Убедитесь, что Logback или другая система логирования настроена
+logging:
+  level:
+    ru.onliver.translation_streamer: INFO
+    org.freedesktop.gstreamer: DEBUG # Можно установить DEBUG для отладки GStreamer
