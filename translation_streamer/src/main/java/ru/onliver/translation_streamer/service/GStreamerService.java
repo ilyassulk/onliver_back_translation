@@ -97,14 +97,19 @@ public class GStreamerService {
         // 2. Строим пайплайн GStreamer с использованием URL из IngressInfo
         // Используем rtmpsink, так как createIngress запрашивал RTMP_INPUT
         // URL обычно включает streamKey, например: rtmp://<host>:<port>/live/<streamKey>
+        String minioURL = minioFilePath;
+        String ingressURL = ingressInfo.getUrl() +"/"+ ingressInfo.getStreamKey();
         String pipelineDescription = String.format(
-                "souphttpsrc location=\"%s\" ! decodebin name=d " +
-                        "d. ! queue ! videoconvert ! x264enc tune=zerolatency bitrate=2000 ! video/x-h264,profile=baseline ! mux. " +
-                        "d. ! queue ! audioconvert ! audioresample ! voaacenc bitrate=128000 ! mux. " +
-                        "flvmux name=mux streamable=true ! rtmp2sink location=\"%s/%s\"",
-                minioFilePath,
-                ingressInfo.getUrl(),
-                ingressInfo.getStreamKey()
+                "souphttpsrc location=\"%s\" ! decodebin name=dec " +
+                "dec. ! queue ! videoconvert ! x264enc tune=zerolatency bitrate=1000 ! " +
+                "h264parse ! queue ! mux. " +
+                "dec. ! queue ! audioconvert ! audioresample ! voaacenc bitrate=128000 ! " +
+                "aacparse ! queue ! mux. " +
+                "flvmux streamable=true name=mux ! rtmpsink location=\"%s\""
+                ,
+                minioURL,
+                ingressURL
+
         );
 
 
@@ -184,15 +189,15 @@ public class GStreamerService {
                 break;
             case SEEK:
                 if (command.getSeekTime() != null) {
-                    pipeline.pause();
+                    //pipeline.pause();
                     long seekTimeNs = command.getSeekTime() * NSECOND;
                     logger.info("Seeking translation for room: {} to {} ns", roomName, seekTimeNs);
                     boolean seeked = pipeline.seekSimple(
                             Format.TIME,                // формат времени (наносекунды)
-                            EnumSet.of(SeekFlags.FLUSH), // флаги (очистка)
+                            EnumSet.of(SeekFlags.KEY_UNIT), // флаги (очистка)
                             seekTimeNs                // новая позиция в наносекундах
                     );
-                    pipeline.play();
+                    //pipeline.play();
 
                     if (!seeked) {
                         logger.warn("Seek operation failed or was inaccurate for room: {}", roomName);
