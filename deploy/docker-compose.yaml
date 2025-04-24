@@ -17,6 +17,21 @@ services:
       - minio
       - livekit
 
+  translation-manager:
+    image: isdockero/onliver-translation-manager:latest
+    ports:
+      - target: 8080
+        published: 8088
+        protocol: tcp
+    networks:
+      - service-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    depends_on:
+      - minio
+      - livekit
 
 networks:
   service-network:

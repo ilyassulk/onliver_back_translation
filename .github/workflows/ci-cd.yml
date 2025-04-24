@@ -31,6 +31,15 @@ jobs:
           push: true
           tags: isdockero/onliver-translation-streamer:latest
 
+      # 5. Сборка и пуш образа для isdockero/onliver-manager-streamer:latest
+      - name: Build and Push Processor Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./translation_manager
+          file: ./translation_manager/Dockerfile
+          push: true
+          tags: isdockero/onliver-translation-manager:latest
+
       # Остановка работающего стека и удаление старого образа
       - name: Stop running stack and remove old image
         uses: appleboy/ssh-action@v0.1.7
