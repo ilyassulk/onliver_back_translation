@@ -6,6 +6,7 @@ import livekit.LivekitModels;
 import lombok.RequiredArgsConstructor;
 import org.freedesktop.gstreamer.Format;
 import org.freedesktop.gstreamer.Pipeline;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
+@EnableScheduling
 public class StreamStatusScheduler {
     private final GStreamerService gStreamerService;
     private final LiveKitService liveKitService;
