@@ -1,6 +1,7 @@
 package ru.onliver.translation_streamer.service;
 
 import io.livekit.server.IngressServiceClient;
+import io.livekit.server.RoomServiceClient;
 import livekit.LivekitIngress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,10 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import retrofit2.Call;
 import retrofit2.Response;
-import ru.onliver.translation_streamer.model.IngressInfo;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 
 @Service
 public class LiveKitService {
@@ -27,12 +26,14 @@ public class LiveKitService {
     @Value("${livekit.secret}")
     private String apiSecret;
 
-    private IngressServiceClient ingressClient;
+    public IngressServiceClient ingressClient;
+    public RoomServiceClient roomClient;
 
     @PostConstruct
     public void initialize() {
         try {
             this.ingressClient =  IngressServiceClient.create(livekitHost, apiKey, apiSecret);
+            this.roomClient = RoomServiceClient.create(livekitHost, apiKey, apiSecret);
             logger.info("LiveKit IngressServiceClient initialized for host: {}", livekitHost);
         } catch (Exception e) {
             logger.error("Failed to initialize LiveKit IngressServiceClient", e);

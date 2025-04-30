@@ -32,8 +32,8 @@ public class GStreamerService {
     private final LiveKitService liveKitService;
 
     // Храним пайплайн и ID Ingress вместе
-    private static class ActiveStream {
-        final Pipeline pipeline;
+    public static class ActiveStream {
+        public Pipeline pipeline;
         final String ingressId;
 
         ActiveStream(Pipeline pipeline, String ingressId) {
@@ -41,7 +41,7 @@ public class GStreamerService {
             this.ingressId = ingressId;
         }
     }
-    private final Map<String, ActiveStream> activeStreams = new ConcurrentHashMap<>();
+     final Map<String, ActiveStream> activeStreams = new ConcurrentHashMap<>();
 
     public GStreamerService(LiveKitService liveKitService) {
         this.liveKitService = liveKitService;
