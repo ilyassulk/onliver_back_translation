@@ -1,14 +1,11 @@
 package ru.onliver.translation_streamer.service;
 
 import org.freedesktop.gstreamer.*;
-import org.freedesktop.gstreamer.elements.AppSrc;
 import org.freedesktop.gstreamer.event.SeekFlags;
-import org.freedesktop.gstreamer.event.SeekType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import ru.onliver.translation_streamer.model.ControlCommand;
+import ru.onliver.translation_streamer.model.ControlRequest;
 import ru.onliver.translation_streamer.model.IngressInfo;
 import ru.onliver.translation_streamer.model.TranslationRequest;
 
@@ -166,7 +163,7 @@ public class GStreamerService {
         }
     }
 
-    public void controlTranslation(ControlCommand command) {
+    public void controlTranslation(ControlRequest command) {
         String roomName = command.getRoomName();
         ActiveStream activeStream = activeStreams.get(roomName);
 

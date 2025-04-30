@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: translation_manager
+  data:
+    mongodb:
+      uri: mongodb://admin:admin@onliver.ru:27017/room?authSource=admin&authMechanism=SCRAM-SHA-256
+  kafka:
+    bootstrap-servers: kafka:9092
+    topic:
+      name: room-events
+      partitions: 1
+      replication-factor: 1
+    properties:
+      security:
+        protocol: PLAINTEXT
+    consumer:
+      group-id: stream-manager
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+server:
+  port: 8080
+  ssl:
+    enabled: false

@@ -19,8 +19,7 @@ minio:
   secret-key: minioadmin
   bucket-name: film
 
-# Убедитесь, что Logback или другая система логирования настроена
 logging:
   level:
     ru.onliver.translation_streamer: INFO
-    org.freedesktop.gstreamer: DEBUG # Можно установить DEBUG для отладки GStreamer
+    org.freedesktop.gstreamer: DEBUG

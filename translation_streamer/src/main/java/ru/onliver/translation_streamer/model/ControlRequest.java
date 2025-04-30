@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ControlCommand {
+public class ControlRequest {
     private String roomName;
     private CommandType command;
     private Long seekTime; // Используется только для команды SEEK
