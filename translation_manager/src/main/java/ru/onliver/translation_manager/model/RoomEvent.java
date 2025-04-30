@@ -3,7 +3,7 @@ package ru.onliver.translation_manager.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.onliver.room_manager.enums.KafkaRoomEventType;
+import ru.onliver.translation_manager.enums.KafkaRoomEventType;
 
 @Data
 @NoArgsConstructor
