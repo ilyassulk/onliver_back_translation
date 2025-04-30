@@ -71,8 +71,12 @@ public class TranslationService {
 
         if(controlRequest.getCommand() == ControlRequest.CommandType.PAUSE)
             translation.setStatus(2);
-        if(controlRequest.getCommand() == ControlRequest.CommandType.PAUSE)
+        if(controlRequest.getCommand() == ControlRequest.CommandType.PLAY)
             translation.setStatus(1);
+
+        if(controlRequest.getCommand() == ControlRequest.CommandType.STOP){
+            translationRepository.deleteByRoomName(controlRequest.getRoomName());
+        }
 
         translationRepository.save(translation);
     }
