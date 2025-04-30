@@ -54,18 +54,20 @@ public class TranslationService {
         HttpEntity<ControlRequest> entity =
                 new HttpEntity<>(controlRequest, headers);
 
-        ResponseEntity<StreamerControlResponse> response =
+        Translation translation = translationRepository.findByRoomName(controlRequest.getRoomName());
+
+        ResponseEntity<String> response =
                 restTemplate.postForEntity(
-                        "http://translation-streamer:8080/control",
+                        "http://"+translation.getStreamerIP()+":8080/control",
                         entity,
-                        StreamerControlResponse.class
+                        String.class
                 );
 
         if (!response.getStatusCode().is2xxSuccessful()){
             throw new RuntimeException("Failed to start translation");
         }
 
-        Translation translation = translationRepository.findByRoomName(controlRequest.getRoomName());
+
 
         if(controlRequest.getCommand() == ControlRequest.CommandType.PAUSE)
             translation.setStatus(2);
