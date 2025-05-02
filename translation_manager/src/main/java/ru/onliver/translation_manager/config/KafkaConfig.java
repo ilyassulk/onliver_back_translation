@@ -15,6 +15,8 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.config.TopicBuilder;
 import ru.onliver.translation_manager.model.RoomEvent;
 import ru.onliver.translation_manager.model.TranslationEvent;
+import ru.onliver.translation_manager.enums.KafkaRoomEventType;
+import ru.onliver.translation_manager.enums.KafkaTranslationEventType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,18 +38,23 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG,            groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,   StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "ru.onliver.translation_manager.model");
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "ru.onliver.translation_manager.model,ru.onliver.translation_manager.enums");
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, targetType.getName());
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         return props;
     }
 
     /* ---------- RoomEvent ---------- */
     @Bean
     public ConsumerFactory<String, RoomEvent> roomEventConsumerFactory() {
+        JsonDeserializer<RoomEvent> jsonDeserializer = new JsonDeserializer<>(RoomEvent.class, false);
+        jsonDeserializer.addTrustedPackages("ru.onliver.translation_manager.model");
+        jsonDeserializer.setUseTypeHeaders(false);
+        
         return new DefaultKafkaConsumerFactory<>(
                 commonConsumerProps(RoomEvent.class),
                 new StringDeserializer(),
-                new JsonDeserializer<>(RoomEvent.class, false));
+                jsonDeserializer);
     }
 
     @Bean
@@ -63,10 +70,14 @@ public class KafkaConfig {
     /* ---------- TranslationEvent ---------- */
     @Bean
     public ConsumerFactory<String, TranslationEvent> translationEventConsumerFactory() {
+        JsonDeserializer<TranslationEvent> jsonDeserializer = new JsonDeserializer<>(TranslationEvent.class, false);
+        jsonDeserializer.addTrustedPackages("ru.onliver.translation_manager.model", "ru.onliver.translation_manager.enums");
+        jsonDeserializer.setUseTypeHeaders(false);
+        
         return new DefaultKafkaConsumerFactory<>(
                 commonConsumerProps(TranslationEvent.class),
                 new StringDeserializer(),
-                new JsonDeserializer<>(TranslationEvent.class, false));
+                jsonDeserializer);
     }
 
     @Bean

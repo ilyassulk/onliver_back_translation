@@ -21,28 +21,30 @@ public class TranslationEventController {
     public void listenRoomEvents(TranslationEvent event) {
         log.info("Получено событие трансляции: {}", event);
 
-        switch (event.getEventType()) {
-            case KafkaTranslationEventType.TRANSLATION_STARTED:
-                break;
-            case KafkaTranslationEventType.TRANSLATION_ENDED_EMERGENCY:
-                translationService.cleanTranslation(event.getRoomName());
-                kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED, event.getRoomName()));
-                break;
-            case KafkaTranslationEventType.TRANSLATION_ENDED_PLANNED:
-                translationService.cleanTranslation(event.getRoomName());
-                kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_PLANNED, event.getRoomName()));
-                break;
-            case KafkaTranslationEventType.TRANSLATION_ENDED_MANUAL:
-                kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED, event.getRoomName()));
-                break;
-            case KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED:
-                break;
-            case KafkaTranslationEventType.TRANSLATION_FINISHED_PLANNED:
-                break;
-            default:
-                log.warn("Неизвестный тип события: {}", event.getEventType());
+        try {
+            switch (event.getEventType()) {
+                case TRANSLATION_STARTED:
+                    break;
+                case TRANSLATION_ENDED_EMERGENCY:
+                    translationService.cleanTranslation(event.getRoomName());
+                    kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED, event.getRoomName()));
+                    break;
+                case TRANSLATION_ENDED_PLANNED:
+                    translationService.cleanTranslation(event.getRoomName());
+                    kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_PLANNED, event.getRoomName()));
+                    break;
+                case TRANSLATION_ENDED_MANUAL:
+                    kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED, event.getRoomName()));
+                    break;
+                case TRANSLATION_FINISHED_ABORTED:
+                    break;
+                case TRANSLATION_FINISHED_PLANNED:
+                    break;
+                default:
+                    log.warn("Неизвестный тип события: {}", event.getEventType());
+            }
+        } catch (Exception e) {
+            log.error("Ошибка при обработке события трансляции: {}", e.getMessage());
         }
     }
-
-
 } 

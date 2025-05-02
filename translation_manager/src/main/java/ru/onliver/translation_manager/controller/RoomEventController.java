@@ -20,14 +20,20 @@ public class RoomEventController {
     public void listenRoomEvents(RoomEvent event) {
         log.info("Получено событие комнаты: {}", event);
 
-        switch (KafkaRoomEventType.fromString(event.getEventType())) {
-            case KafkaRoomEventType.ROOM_STARTED:
-                break;
-            case KafkaRoomEventType.ROOM_FINISHED:
-                translationService.abortTranslation(event.getRoomName());
-                break;
-            default:
-                log.warn("Неизвестный тип события: {}", event.getEventType());
+        try {
+            KafkaRoomEventType eventType = KafkaRoomEventType.fromString(event.getEventType());
+            
+            switch (eventType) {
+                case ROOM_STARTED:
+                    break;
+                case ROOM_FINISHED:
+                    translationService.abortTranslation(event.getRoomName());
+                    break;
+                default:
+                    log.warn("Неизвестный тип события: {}", event.getEventType());
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("Ошибка при обработке события комнаты: {}", e.getMessage());
         }
     }
 
