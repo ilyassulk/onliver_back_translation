@@ -34,6 +34,7 @@ public class TranslationEventController {
                     kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_PLANNED, event.getRoomName()));
                     break;
                 case TRANSLATION_ENDED_MANUAL:
+                    translationService.cleanTranslation(event.getRoomName());
                     kafkaProducer.send("translation-events", new TranslationEvent(KafkaTranslationEventType.TRANSLATION_FINISHED_ABORTED, event.getRoomName()));
                     break;
                 case TRANSLATION_FINISHED_ABORTED:
