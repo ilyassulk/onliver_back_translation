@@ -6,14 +6,23 @@ spring:
       uri: mongodb://admin:admin@onliver.ru:27017/room?authSource=admin&authMechanism=SCRAM-SHA-256
   kafka:
     bootstrap-servers: kafka:9092
-    properties:
-      security:
-        protocol: PLAINTEXT
+
+    # ---------- producer ----------
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    # ---------- consumer (общие настройки) ----------
     consumer:
       group-id: translation-manager
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: ru.onliver.translation_manager.model
+
+    # если слушатель стартует раньше топиков — не падай
+    listener:
+      missing-topics-fatal: false
 
 
 server:

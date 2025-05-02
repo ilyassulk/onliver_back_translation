@@ -16,7 +16,7 @@ public class RoomEventController {
 
     final TranslationService translationService;
     
-    @KafkaListener(topics = "room-events", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "room-events", groupId = "${spring.kafka.consumer.group-id}", containerFactory = "roomKafkaListenerContainerFactory")
     public void listenRoomEvents(RoomEvent event) {
         log.info("Получено событие комнаты: {}", event);
 

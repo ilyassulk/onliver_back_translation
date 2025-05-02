@@ -17,7 +17,7 @@ public class TranslationEventController {
     final TranslationService translationService;
     final KafkaProducer kafkaProducer;
     
-    @KafkaListener(topics = "translation-events", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "translation-events", groupId = "${spring.kafka.consumer.group-id}", containerFactory = "translationKafkaListenerContainerFactory")
     public void listenRoomEvents(TranslationEvent event) {
         log.info("Получено событие трансляции: {}", event);
 
