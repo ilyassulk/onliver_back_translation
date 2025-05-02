@@ -25,9 +25,6 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.consumer.group-id}")
-    private String groupId;
-
     @Bean
     public NewTopic translationEventsTopic() {
         return TopicBuilder.name("translation-events").build();
