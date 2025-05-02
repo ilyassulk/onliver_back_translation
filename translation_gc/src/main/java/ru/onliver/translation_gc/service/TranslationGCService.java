@@ -25,7 +25,7 @@ public class TranslationGCService {
     final KafkaProducer kafkaProducer;
     final TranslationRepository translationRepository;
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 60000)
     void run(){
         translationRepository.findAll().forEach(translation -> {
             try {
