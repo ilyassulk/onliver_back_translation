@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: translation_gc
+  data:
+    mongodb:
+      uri: mongodb://admin:admin@onliver.ru:27017/translation?authSource=admin&authMechanism=SCRAM-SHA-256
+  kafka:
+    bootstrap-servers: kafka:9092
+    properties:
+      security:
+        protocol: PLAINTEXT
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+server:
+  port: 8080
+  ssl:
+    enabled: false
+
