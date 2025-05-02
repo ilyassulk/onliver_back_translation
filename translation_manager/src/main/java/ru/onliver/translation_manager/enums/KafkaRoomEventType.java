@@ -22,4 +22,9 @@ public enum KafkaRoomEventType {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Invalid event type: " + name));
     }
+
+    @Override
+    public String toString() {
+        return this.name;
+    }
 }

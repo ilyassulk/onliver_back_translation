@@ -7,24 +7,27 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Controller;
 import ru.onliver.translation_manager.enums.KafkaRoomEventType;
 import ru.onliver.translation_manager.model.RoomEvent;
+import ru.onliver.translation_manager.service.TranslationService;
 
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class RoomEventController {
-    
-    @KafkaListener(topics = "${spring.kafka.topic.name}", groupId = "${spring.kafka.consumer.group-id}")
-    public void listenRoomEvents(RoomEvent roomEvent) {
-        log.info("Получено событие комнаты: {}", roomEvent);
 
-        switch (KafkaRoomEventType.fromString(roomEvent.getEventType())) {
+    final TranslationService translationService;
+    
+    @KafkaListener(topics = "room-events", groupId = "${spring.kafka.consumer.group-id}")
+    public void listenRoomEvents(RoomEvent event) {
+        log.info("Получено событие комнаты: {}", event);
+
+        switch (KafkaRoomEventType.fromString(event.getEventType())) {
             case KafkaRoomEventType.ROOM_STARTED:
                 break;
             case KafkaRoomEventType.ROOM_FINISHED:
-
+                translationService.abortTranslation(event.getRoomName());
                 break;
             default:
-                log.warn("Неизвестный тип события: {}", roomEvent.getEventType());
+                log.warn("Неизвестный тип события: {}", event.getEventType());
         }
     }
 

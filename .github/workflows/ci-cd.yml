@@ -40,6 +40,14 @@ jobs:
           push: true
           tags: isdockero/onliver-translation-manager:latest
 
+      - name: Build and Push Processor Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./translation_gc
+          file: ./translation_gc/Dockerfile
+          push: true
+          tags: isdockero/onliver-translation-gc:latest
+
       # Остановка работающего стека и удаление старого образа
       - name: Stop running stack and remove old image
         uses: appleboy/ssh-action@v0.1.7

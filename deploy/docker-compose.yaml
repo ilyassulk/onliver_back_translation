@@ -33,6 +33,18 @@ services:
       - minio
       - livekit
 
+  translation-gc:
+    image: isdockero/onliver-translation-gc:latest
+    networks:
+      - service-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    depends_on:
+      - minio
+      - livekit
+
 networks:
   service-network:
     external: true

@@ -1,4 +1,4 @@
-package ru.onliver.translation_manager.model;
+package ru.onliver.translation_gc.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -5,8 +5,10 @@ import org.freedesktop.gstreamer.event.SeekFlags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ru.onliver.translation_streamer.enums.KafkaTranslationEventType;
 import ru.onliver.translation_streamer.model.ControlRequest;
 import ru.onliver.translation_streamer.model.IngressInfo;
+import ru.onliver.translation_streamer.model.TranslationEvent;
 import ru.onliver.translation_streamer.model.TranslationRequest;
 
 import jakarta.annotation.PostConstruct;
@@ -19,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.freedesktop.gstreamer.Gst;
 import org.freedesktop.gstreamer.Format;
+import ru.onliver.translation_streamer.util.KafkaProducer;
 
 @Service
 public class GStreamerService {
@@ -28,8 +31,11 @@ public class GStreamerService {
     private static final Logger logger = LoggerFactory.getLogger(GStreamerService.class);
 
 
+
     // Зависимость от LiveKitService
     private final LiveKitService liveKitService;
+    private final KafkaProducer kafkaProducer;
+    private final SyncMessageService syncMessageService;
 
     // Храним пайплайн и ID Ingress вместе
     public static class ActiveStream {
@@ -43,8 +49,10 @@ public class GStreamerService {
     }
      final Map<String, ActiveStream> activeStreams = new ConcurrentHashMap<>();
 
-    public GStreamerService(LiveKitService liveKitService) {
+    public GStreamerService(LiveKitService liveKitService, KafkaProducer kafkaProducer, SyncMessageService syncMessageService) {
         this.liveKitService = liveKitService;
+        this.kafkaProducer = kafkaProducer;
+        this.syncMessageService = syncMessageService;
     }
 
     @PostConstruct
@@ -68,7 +76,7 @@ public class GStreamerService {
 
     public void startTranslation(TranslationRequest request) {
         String roomName = request.getRoomName();
-        String minioFilePath = request.getMinioFilePath();
+        String minioFilePath = request.getContentURL();
         // Пример идентификаторов, возможно, их нужно передавать в запросе
         String participantIdentity = "streamer-" + roomName;
         String participantName = "Video File Streamer";
@@ -91,9 +99,6 @@ public class GStreamerService {
             return; // Не удалось создать Ingress
         }
 
-        // 2. Строим пайплайн GStreamer с использованием URL из IngressInfo
-        // Используем rtmpsink, так как createIngress запрашивал RTMP_INPUT
-        // URL обычно включает streamKey, например: rtmp://<host>:<port>/live/<streamKey>
         String minioURL = minioFilePath;
         String ingressURL = ingressInfo.getUrl() +"/"+ ingressInfo.getStreamKey();
         String pipelineDescription = String.format(
@@ -110,12 +115,6 @@ public class GStreamerService {
         );
 
 
-
-
-
-
-        // Примечание: flvmux обычно нужен для RTMP.
-
         logger.info("Attempting to start GStreamer pipeline for room {}: {}", roomName, pipelineDescription);
         AtomicReference<Pipeline> pipelineRef = new AtomicReference<>();
 
@@ -129,11 +128,13 @@ public class GStreamerService {
 
             pipeline.getBus().connect((Bus.EOS) source -> {
                 logger.info("End-Of-Stream reached for room: {}", source.getName());
+                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_PLANNED, roomName));
                 stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
             });
 
             pipeline.getBus().connect((Bus.ERROR) (source, code, message) -> {
                 logger.error("GStreamer error for room {}: code={}, message={}", source.getName(), code, message);
+                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_EMERGENCY, roomName));
                 stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
             });
 
@@ -179,14 +180,15 @@ public class GStreamerService {
             case PAUSE:
                 logger.info("Pausing translation for room: {}", roomName);
                 pipeline.pause();
+                syncMessageService.sendSyncMessage(roomName, pipeline);
                 break;
             case PLAY:
                 logger.info("Resuming translation for room: {}", roomName);
                 pipeline.play();
+                syncMessageService.sendSyncMessage(roomName, pipeline);
                 break;
             case SEEK:
                 if (command.getSeekTime() != null) {
-                    //pipeline.pause();
                     long seekTimeNs = command.getSeekTime() * NSECOND;
                     logger.info("Seeking translation for room: {} to {} ns", roomName, seekTimeNs);
                     boolean seeked = pipeline.seekSimple(
@@ -194,10 +196,12 @@ public class GStreamerService {
                             EnumSet.of(SeekFlags.KEY_UNIT), // флаги (очистка)
                             seekTimeNs                // новая позиция в наносекундах
                     );
-                    //pipeline.play();
 
                     if (!seeked) {
                         logger.warn("Seek operation failed or was inaccurate for room: {}", roomName);
+                    }
+                    else {
+                        syncMessageService.sendSyncMessage(roomName, pipeline);
                     }
                 } else {
                     logger.warn("Seek time not provided for SEEK command in room: {}", roomName);
@@ -206,6 +210,7 @@ public class GStreamerService {
             case STOP:
                 logger.info("Stopping translation for room: {} via control command", roomName);
                 stopTranslationInternal(roomName);
+                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_MANUAL, roomName));
                 break;
             default:
                 logger.warn("Unknown control command: {}", command.getCommand());
@@ -236,7 +241,30 @@ public class GStreamerService {
         }
     }
 
+    public  boolean checkRoomTranslation(String roomName){
+        try {
+            ActiveStream activeStream = activeStreams.get(roomName);
+            if (activeStream == null) {
+                return false;
+            }
+            return true;
+        }
+        catch (Exception e){
+            return false;
+        }
+    }
+
     public boolean isManagingStream(String roomName) {
         return activeStreams.containsKey(roomName);
+    }
+
+    private void publishTranslationEvent(TranslationEvent event) {
+        try {
+
+            kafkaProducer.send("translation-events", event);// асинхронно, не вызываем .get()
+            logger.info("Kafka event {} sent for room {}", event.getEventType(), event.getRoomName());
+        } catch (Exception ex) {
+            logger.error("Cannot publish Kafka event {} for room {}", event.getEventType(), event.getRoomName(), ex);
+        }
     }
 }

@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TranslationRequest {
     private String roomName;
-    private String minioFilePath;
+    private String contentURL;
 } 

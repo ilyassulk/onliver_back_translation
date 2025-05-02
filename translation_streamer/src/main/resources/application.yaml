@@ -1,7 +1,14 @@
 spring:
   application:
     name: translation_streamer
-
+  kafka:
+    bootstrap-servers: kafka:9092
+    properties:
+      security:
+        protocol: PLAINTEXT
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 server:
   port: 8080
@@ -23,3 +30,4 @@ logging:
   level:
     ru.onliver.translation_streamer: INFO
     org.freedesktop.gstreamer: DEBUG
+
