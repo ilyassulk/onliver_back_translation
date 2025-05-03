@@ -23,6 +23,11 @@ import org.freedesktop.gstreamer.Gst;
 import org.freedesktop.gstreamer.Format;
 import ru.onliver.translation_streamer.util.KafkaProducer;
 
+/**
+ * Сервис для работы с GStreamer.
+ * Управляет медиа-стримами, обеспечивает трансляцию контента
+ * и обработку команд управления воспроизведением.
+ */
 @Service
 public class GStreamerService {
 
@@ -30,14 +35,10 @@ public class GStreamerService {
 
     private static final Logger logger = LoggerFactory.getLogger(GStreamerService.class);
 
-
-
-    // Зависимость от LiveKitService
     private final LiveKitService liveKitService;
-    private final KafkaProducer kafkaProducer;
     private final SyncMessageService syncMessageService;
+    private final TranslationProducerService translationProducerService;
 
-    // Храним пайплайн и ID Ingress вместе
     public static class ActiveStream {
         public Pipeline pipeline;
         final String ingressId;
@@ -49,10 +50,10 @@ public class GStreamerService {
     }
      final Map<String, ActiveStream> activeStreams = new ConcurrentHashMap<>();
 
-    public GStreamerService(LiveKitService liveKitService, KafkaProducer kafkaProducer, SyncMessageService syncMessageService) {
+    public GStreamerService(LiveKitService liveKitService,  SyncMessageService syncMessageService, TranslationProducerService translationProducerService) {
         this.liveKitService = liveKitService;
-        this.kafkaProducer = kafkaProducer;
         this.syncMessageService = syncMessageService;
+        this.translationProducerService = translationProducerService;
     }
 
     @PostConstruct
@@ -68,7 +69,6 @@ public class GStreamerService {
 
     @PreDestroy
     public void deinitializeGStreamer() {
-        // Останавливаем все активные стримы и удаляем Ingress
         activeStreams.keySet().forEach(this::stopTranslationInternal);
         Gst.deinit();
         logger.info("GStreamer deinitialized.");
@@ -76,8 +76,8 @@ public class GStreamerService {
 
     public void startTranslation(TranslationRequest request) {
         String roomName = request.getRoomName();
-        String minioFilePath = request.getContentURL();
-        // Пример идентификаторов, возможно, их нужно передавать в запросе
+        String contentURL = request.getContentURL();
+
         String participantIdentity = "streamer-" + roomName;
         String participantName = "Video File Streamer";
 
@@ -87,6 +87,8 @@ public class GStreamerService {
         }
 
         // 1. Создаем LiveKit Ingress
+        // НУ ОЧЕВИДНО ЧТО ЭТО НЕ ДОЛЖНО ТУТ БЫТЬ!
+        // ЕСЛИ СОЗДАНИЕ ИНГРЕСА ВСЁ ЕЩЁ ЧТО_ТО ЗАБЫЛО В СЕРВИСЕ G-СТРИМЕРА - КАЮСЬ!
         IngressInfo ingressInfo;
         try {
             ingressInfo = liveKitService.createIngress(roomName, participantIdentity, participantName);
@@ -99,7 +101,6 @@ public class GStreamerService {
             return; // Не удалось создать Ingress
         }
 
-        String minioURL = minioFilePath;
         String ingressURL = ingressInfo.getUrl() +"/"+ ingressInfo.getStreamKey();
         String pipelineDescription = String.format(
                 "souphttpsrc location=\"%s\" ! decodebin name=dec " +
@@ -109,9 +110,8 @@ public class GStreamerService {
                 "aacparse ! queue ! mux. " +
                 "flvmux streamable=true name=mux ! rtmpsink location=\"%s\""
                 ,
-                minioURL,
+                contentURL,
                 ingressURL
-
         );
 
 
@@ -128,13 +128,13 @@ public class GStreamerService {
 
             pipeline.getBus().connect((Bus.EOS) source -> {
                 logger.info("End-Of-Stream reached for room: {}", source.getName());
-                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_PLANNED, roomName));
+                translationProducerService.publishTranslationEndPlannedEvent(roomName);
                 stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
             });
 
             pipeline.getBus().connect((Bus.ERROR) (source, code, message) -> {
                 logger.error("GStreamer error for room {}: code={}, message={}", source.getName(), code, message);
-                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_EMERGENCY, roomName));
+                translationProducerService.publishTranslationEndEmergencyEvent(roomName);
                 stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
             });
 
@@ -174,8 +174,6 @@ public class GStreamerService {
         }
         Pipeline pipeline = activeStream.pipeline;
 
-        //logger.debug("Controlling pipeline for room {}. Current state: {}", roomName, pipeline.getState());
-
         switch (command.getCommand()) {
             case PAUSE:
                 logger.info("Pausing translation for room: {}", roomName);
@@ -209,8 +207,9 @@ public class GStreamerService {
                 break;
             case STOP:
                 logger.info("Stopping translation for room: {} via control command", roomName);
+                syncMessageService.sendEndMessage(roomName);
                 stopTranslationInternal(roomName);
-                publishTranslationEvent(new TranslationEvent(KafkaTranslationEventType.TRANSLATION_ENDED_MANUAL, roomName));
+                translationProducerService.publishTranslationEndManualEvent(roomName);
                 break;
             default:
                 logger.warn("Unknown control command: {}", command.getCommand());
@@ -256,15 +255,5 @@ public class GStreamerService {
 
     public boolean isManagingStream(String roomName) {
         return activeStreams.containsKey(roomName);
-    }
-
-    private void publishTranslationEvent(TranslationEvent event) {
-        try {
-
-            kafkaProducer.send("translation-events", event);// асинхронно, не вызываем .get()
-            logger.info("Kafka event {} sent for room {}", event.getEventType(), event.getRoomName());
-        } catch (Exception ex) {
-            logger.error("Cannot publish Kafka event {} for room {}", event.getEventType(), event.getRoomName(), ex);
-        }
     }
 }

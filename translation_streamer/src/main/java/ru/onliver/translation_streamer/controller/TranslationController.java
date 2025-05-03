@@ -15,6 +15,11 @@ import ru.onliver.translation_streamer.model.TranslationResponse;
 import ru.onliver.translation_streamer.service.GStreamerService;
 import ru.onliver.translation_streamer.service.HardwareService;
 
+/**
+ * REST-контроллер для управления стримами перевода.
+ * Предоставляет API для запуска, проверки и управления трансляциями.
+ * Обрабатывает запросы для начала трансляции и контроля над ней.
+ */
 @RestController
 public class TranslationController {
 
@@ -44,7 +49,7 @@ public class TranslationController {
         }
     }
 
-    @PostMapping("/start")
+    @PostMapping("/translation/start")
     public ResponseEntity<?> startTranslation(@RequestBody TranslationRequest request) {
         if (request == null || request.getRoomName() == null || request.getRoomName().isEmpty()
                 || request.getContentURL() == null || request.getContentURL().isEmpty()) {
@@ -68,7 +73,7 @@ public class TranslationController {
         }
     }
 
-    @PostMapping("/control")
+    @PostMapping("/translation/control")
     public ResponseEntity<String> controlTranslation(@RequestBody ControlRequest command) {
         if (command == null || command.getRoomName() == null || command.getRoomName().isEmpty() || command.getCommand() == null) {
             logger.warn("Invalid control command request: {}", command);

@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import ru.onliver.translation_manager.enums.KafkaTranslationEventType;
 
+/**
+ * Модель для событий, связанных с трансляциями, передаваемых через Kafka
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

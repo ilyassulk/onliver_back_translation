@@ -21,6 +21,9 @@ import ru.onliver.translation_manager.enums.KafkaTranslationEventType;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Конфигурация Kafka для обработки событий комнат и трансляций
+ */
 @Configuration
 @EnableKafka
 public class KafkaConfig {
@@ -76,7 +79,6 @@ public class KafkaConfig {
         return factory;
     }
 
-    /* ---------- сами топики (создаются при старте, если ещё нет) ---------- */
     @Bean
     public NewTopic roomEventsTopic() {
         return TopicBuilder.name("room-events").build();

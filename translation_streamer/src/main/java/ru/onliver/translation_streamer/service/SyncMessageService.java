@@ -14,6 +14,11 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * Сервис синхронизации сообщений.
+ * Обрабатывает синхронизацию состояний между компонентами системы,
+ * передавая сообщения о состоянии трансляции.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -21,9 +26,34 @@ public class SyncMessageService {
     private final LiveKitService liveKitService;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    public void sendEndMessage(String roomName){
+        log.info("end message for room {}", roomName);
+
+        byte[] payload = null;
+        try {
+            payload = mapper.writeValueAsBytes(
+                    Map.of("room", roomName,
+                            "positionMs", 0,
+                            "durationMs", 0,
+                            "state", -1
+                    ));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            liveKitService.roomClient.sendData(roomName, payload, LivekitModels.DataPacket.Kind.RELIABLE,
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    "stream-status").execute();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void sendSyncMessage(String roomName, Pipeline pipeline) {
         try {
-            log.info("sync message");
+            log.info("sync message for room {}", roomName);
             long posNs = queryPosition(pipeline);
             long durNs = queryDuration(pipeline);
             State state = queryState(pipeline);

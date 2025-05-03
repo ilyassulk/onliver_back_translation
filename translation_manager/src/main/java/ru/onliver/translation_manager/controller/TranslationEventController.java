@@ -9,6 +9,9 @@ import ru.onliver.translation_manager.model.TranslationEvent;
 import ru.onliver.translation_manager.service.TranslationService;
 import ru.onliver.translation_manager.util.KafkaProducer;
 
+/**
+ * Контроллер для обработки событий трансляций через Kafka
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor

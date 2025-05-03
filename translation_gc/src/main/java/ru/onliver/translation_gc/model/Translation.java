@@ -6,6 +6,10 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Модель данных для хранения информации о трансляции в MongoDB.
+ * Содержит идентификатор, название комнаты, URL контента и IP-адрес стримера.
+ */
 @Document(collection = "translation")
 @AllArgsConstructor
 @NoArgsConstructor
@@ -15,13 +19,11 @@ public class Translation {
     String id;
     String roomName;
     String contentURL;
-    int status;
     String streamerIP;
 
-    public Translation(String roomName, String contentURL, int status, String streamerIP) {
+    public Translation(String roomName, String contentURL,  String streamerIP) {
         this.roomName = roomName;
         this.contentURL = contentURL;
-        this.status = status;
         this.streamerIP = streamerIP;
     }
 }

@@ -5,6 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * Конфигурация RestTemplate для выполнения HTTP-запросов к другим сервисам,
+ * в частности для проверки статуса трансляций на сервере стримера.
+ */
 @Configuration
 public class RestTemplateConfig {
     @Bean

@@ -20,12 +20,6 @@ livekit:
   apiKey: APIXMCTJEXDBghU
   secret: laxpDMZwSmNlxvjHzG8YnZsti8ofCMRlY9H6OAL7EeL
 
-minio:
-  endpoint: http://onliver.ru:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket-name: film
-
 logging:
   level:
     ru.onliver.translation_streamer: INFO

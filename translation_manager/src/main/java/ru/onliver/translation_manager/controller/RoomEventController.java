@@ -9,6 +9,9 @@ import ru.onliver.translation_manager.enums.KafkaRoomEventType;
 import ru.onliver.translation_manager.model.RoomEvent;
 import ru.onliver.translation_manager.service.TranslationService;
 
+/**
+ * Контроллер для обработки событий комнат через Kafka
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -27,7 +30,7 @@ public class RoomEventController {
                 case ROOM_STARTED:
                     break;
                 case ROOM_FINISHED:
-                    translationService.abortTranslation(event.getRoomName());
+                    translationService.stopTranslation(event.getRoomName());
                     break;
                 default:
                     log.warn("Неизвестный тип события: {}", event.getEventType());

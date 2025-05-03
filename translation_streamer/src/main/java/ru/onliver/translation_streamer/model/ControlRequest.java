@@ -4,6 +4,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Модель запроса на управление трансляцией.
+ * Содержит команды для управления трансляцией, такие как пауза, воспроизведение, перемотка.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

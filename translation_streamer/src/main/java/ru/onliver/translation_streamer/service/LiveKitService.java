@@ -12,6 +12,11 @@ import retrofit2.Response;
 
 import jakarta.annotation.PostConstruct;
 
+/**
+ * Сервис для взаимодействия с LiveKit.
+ * Создает и управляет трансляциями через LiveKit API,
+ * обеспечивая работу с Ingress и другими компонентами LiveKit.
+ */
 @Service
 public class LiveKitService {
 
@@ -57,7 +62,7 @@ public class LiveKitService {
                 .build();
 
         try {
-            Call<LivekitIngress.IngressInfo> info_с =  ingressClient.createIngress(
+            LivekitIngress.IngressInfo info =  ingressClient.createIngress(
                     request.getRoomName(),
                     request.getRoomName(),
                     request.getParticipantIdentity(),
@@ -67,9 +72,8 @@ public class LiveKitService {
                     null,
                     null,
                     null
-            );
-            Response<LivekitIngress.IngressInfo> info_r = info_с.execute();
-            LivekitIngress.IngressInfo info = info_r.body();
+            ).execute().body();
+
             logger.info("Successfully created Ingress ID: {}, URL: {}, StreamKey: {}",
                     info.getIngressId(), info.getUrl(), info.getStreamKey());
 

@@ -4,6 +4,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Модель запроса на начало трансляции.
+ * Содержит параметры для запуска новой трансляции, включая имя комнаты и URL контента.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

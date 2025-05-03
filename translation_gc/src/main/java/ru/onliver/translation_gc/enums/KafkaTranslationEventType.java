@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.Arrays;
 
+/**
+ * Перечисление типов событий трансляции для обмена через Kafka.
+ * Включает события начала, запланированного и экстренного завершения трансляций.
+ */
 public enum KafkaTranslationEventType {
     TRANSLATION_STARTED("translation_started"),
     TRANSLATION_ENDED_PLANNED("translation_ended_planned"),

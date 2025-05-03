@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Модель запроса для управления трансляцией (пауза, воспроизведение, перемотка)
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

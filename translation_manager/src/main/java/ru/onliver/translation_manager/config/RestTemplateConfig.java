@@ -8,6 +8,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 
+/**
+ * Конфигурация RestTemplate для HTTP-запросов к внешним сервисам
+ */
 @Configuration
 public class RestTemplateConfig {
     @Bean

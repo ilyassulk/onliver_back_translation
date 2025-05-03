@@ -13,8 +13,11 @@ import ru.onliver.translation_manager.model.ControlRequest;
 import ru.onliver.translation_manager.model.TranslationRequest;
 import ru.onliver.translation_manager.service.TranslationService;
 
+/**
+ * REST-контроллер для управления трансляциями (запуск и контроль)
+ */
 @RestController
-@RequestMapping("/api/translation")
+@RequestMapping("/translation")
 @AllArgsConstructor
 public class TranslationController {
 

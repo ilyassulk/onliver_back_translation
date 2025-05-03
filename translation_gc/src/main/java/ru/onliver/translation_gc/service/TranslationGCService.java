@@ -15,6 +15,11 @@ import ru.onliver.translation_gc.model.TranslationEvent;
 import ru.onliver.translation_gc.repository.TranslationRepository;
 import ru.onliver.translation_gc.util.KafkaProducer;
 
+/**
+ * Сервис сборки мусора трансляций, проверяющий активность трансляций
+ * и обрабатывающий их завершение в случае обнаружения неактивности.
+ * Запускается по расписанию каждую минуту для проверки всех трансляций.
+ */
 @Slf4j
 @Service
 @EnableScheduling
@@ -43,12 +48,12 @@ public class TranslationGCService {
                         );
 
                 if (!response.getStatusCode().is2xxSuccessful()){
-                    log.info("Translation ended");
+                    log.info("Translation ended from room {}", translation.getRoomName());
                     handleEndTranslation(translation.getRoomName());
                 }
             }
             catch(Exception e){
-                log.info("Exception while checking translation ", e);
+                log.info("Exception while checking translation from room {}", translation.getRoomName(), e);
                 handleEndTranslation(translation.getRoomName());
             }
         });

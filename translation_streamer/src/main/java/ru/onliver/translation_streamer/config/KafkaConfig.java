@@ -7,6 +7,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.TopicBuilder;
 
+/**
+ * Конфигурация для работы с Kafka.
+ * Настраивает подключение и параметры для работы с Kafka брокерами.
+ */
 @Configuration
 @EnableKafka
 public class KafkaConfig {

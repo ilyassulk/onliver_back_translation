@@ -4,6 +4,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Модель информации о LiveKit Ingress.
+ * Содержит данные о созданном Ingress для трансляции.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

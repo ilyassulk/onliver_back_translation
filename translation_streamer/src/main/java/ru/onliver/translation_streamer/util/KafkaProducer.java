@@ -3,6 +3,10 @@ package ru.onliver.translation_streamer.util;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * Утилитарный класс для отправки сообщений в Kafka.
+ * Обеспечивает отправку событий в топики Kafka.
+ */
 @Component
 public class KafkaProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;

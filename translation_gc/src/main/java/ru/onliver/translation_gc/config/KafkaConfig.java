@@ -18,6 +18,10 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Конфигурация Kafka, настраивающая топики и параметры взаимодействия
+ * с брокером сообщений для обмена событиями трансляций.
+ */
 @Configuration
 @EnableKafka
 public class KafkaConfig {

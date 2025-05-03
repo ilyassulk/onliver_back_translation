@@ -5,6 +5,10 @@ import lombok.Data;
 import lombok.NonNull;
 import ru.onliver.translation_gc.enums.KafkaTranslationEventType;
 
+/**
+ * Модель события трансляции для отправки в Kafka.
+ * Содержит тип события и название комнаты, где происходит трансляция.
+ */
 @Data
 @AllArgsConstructor
 public class TranslationEvent {

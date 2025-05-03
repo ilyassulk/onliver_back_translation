@@ -9,6 +9,10 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Enumeration;
 
+/**
+ * Сервис для работы с аппаратными ресурсами.
+ * Предоставляет информацию о контейнере и аппаратной конфигурации системы.
+ */
 @Service
 public class HardwareService {
 

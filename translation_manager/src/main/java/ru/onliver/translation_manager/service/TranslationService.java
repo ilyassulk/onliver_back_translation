@@ -18,16 +18,18 @@ import ru.onliver.translation_manager.util.KafkaProducer;
 
 import java.util.Optional;
 
+/**
+ * Сервис для управления трансляциями - запуск, контроль, остановка и очистка
+ */
 @Service
 @AllArgsConstructor
 public class TranslationService {
 
     final RestTemplate restTemplate;
     final TranslationRepository translationRepository;
-    final KafkaProducer kafkaProducer;
 
     public void startTranslation(TranslationRequest translationRequest) {
-        if(translationRepository.findOptionalByRoomName(translationRequest.getRoomName()).isPresent()) {
+        if(translationRepository.findByRoomName(translationRequest.getRoomName()).isPresent()) {
             throw new RuntimeException("Translation for room name already exists");
         }
 
@@ -39,7 +41,7 @@ public class TranslationService {
 
         ResponseEntity<StreamerTranslationResponse> response =
                 restTemplate.postForEntity(
-                        "http://translation-streamer:8080/start",
+                        "http://translation-streamer:8080/translation/start",
                         entity,
                         StreamerTranslationResponse.class
                 );
@@ -50,24 +52,34 @@ public class TranslationService {
 
         translationRepository.save(new Translation(
                 response.getBody().getRoomName(),
-                "none",
-                1,
+                translationRequest.getContentURL(),
                 response.getBody().getStreamerIP()
         ));
     }
 
     public void controlTranslation(ControlRequest controlRequest) {
+        Translation translation = null;
+        try {
+            Optional<Translation> translationOptional = translationRepository.findByRoomName(controlRequest.getRoomName());
+            if(translationOptional.isPresent()) {
+                translation = translationOptional.get();
+            }
+            else {
+                throw new RuntimeException("Translation for room name not found");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<ControlRequest> entity =
                 new HttpEntity<>(controlRequest, headers);
 
-        Translation translation = translationRepository.findByRoomName(controlRequest.getRoomName());
-
         ResponseEntity<String> response =
                 restTemplate.postForEntity(
-                        "http://"+translation.getStreamerIP()+":8080/control",
+                        "http://"+translation.getStreamerIP()+":8080/translation/control",
                         entity,
                         String.class
                 );
@@ -76,27 +88,11 @@ public class TranslationService {
             throw new RuntimeException("Failed to start translation");
         }
 
-
-
-        if(controlRequest.getCommand() == ControlRequest.CommandType.PAUSE)
-            translation.setStatus(2);
-        if(controlRequest.getCommand() == ControlRequest.CommandType.PLAY)
-            translation.setStatus(1);
-
-        if(controlRequest.getCommand() == ControlRequest.CommandType.STOP){
-            cleanTranslation(controlRequest.getRoomName());
-        }
-
         translationRepository.save(translation);
     }
 
     public void stopTranslation(String roomName) {
         this.controlTranslation(new ControlRequest(roomName, ControlRequest.CommandType.STOP, 0L));
-    }
-
-    public void abortTranslation(String roomName){
-        stopTranslation(roomName);
-        cleanTranslation(roomName);
     }
 
     public void cleanTranslation(String roomName){

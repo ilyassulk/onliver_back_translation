@@ -5,6 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.onliver.translation_manager.enums.KafkaRoomEventType;
 
+/**
+ * Модель для событий комнаты, обрабатываемых через Kafka
+ */
 @Data
 @NoArgsConstructor
 public class RoomEvent {
@@ -17,13 +20,5 @@ public class RoomEvent {
     public RoomEvent(String eventType, String roomName) {
         this.eventType = eventType;
         this.roomName = roomName;
-    }
-
-    public static RoomEvent buildRoomStartedEvent(String roomName) {
-        return new RoomEvent(KafkaRoomEventType.ROOM_STARTED.getName(), roomName);
-    }
-
-    public static RoomEvent buildRoomFinishedEvent(String roomName) {
-        return new RoomEvent(KafkaRoomEventType.ROOM_FINISHED.getName(), roomName);
     }
 }
