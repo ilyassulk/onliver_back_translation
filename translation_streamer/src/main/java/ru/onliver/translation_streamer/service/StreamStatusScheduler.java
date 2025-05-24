@@ -6,6 +6,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 /**
  * Планировщик проверки статуса стримов.
@@ -22,12 +25,21 @@ public class StreamStatusScheduler {
 
     @Scheduled(fixedRate = 5000)
     public void pushStatuses() {
-        gStreamerService.activeStreams.forEach((room, active) -> {
+        // Создаем snapshot активных стримов для избежания ConcurrentModificationException
+        Map<String, GStreamerService.ActiveStream> currentStreams = new HashMap<>(gStreamerService.activeStreams);
+        
+        currentStreams.forEach((room, active) -> {
             try {
-                syncMessageService.sendSyncMessage(room, active.pipeline);
-            }
-            catch (Exception e) {
-                log.error(e.getMessage());
+                // Проверяем, что pipeline еще валиден
+                if (active != null && active.pipeline != null && !active.isStopping) {
+                    syncMessageService.sendSyncMessage(room, active.pipeline);
+                }
+            } catch (Exception e) {
+                log.error("Error sending sync message for room {}: {}", room, e.getMessage());
+                // Если pipeline поврежден или недоступен, можно рассмотреть его удаление
+                if (e.getMessage() != null && e.getMessage().contains("disposed")) {
+                    log.warn("Pipeline for room {} appears to be disposed, consider cleanup", room);
+                }
             }
         });
     }

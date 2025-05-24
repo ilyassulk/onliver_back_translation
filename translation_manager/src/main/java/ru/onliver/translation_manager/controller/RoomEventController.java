@@ -12,8 +12,8 @@ import ru.onliver.translation_manager.service.TranslationService;
 /**
  * Контроллер для обработки событий комнат через Kafka
  */
-@Slf4j
 @Controller
+@Slf4j
 @RequiredArgsConstructor
 public class RoomEventController {
 

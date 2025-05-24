@@ -1,8 +1,6 @@
 package ru.onliver.translation_manager.controller;
 
 import lombok.AllArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +19,6 @@ import ru.onliver.translation_manager.service.TranslationService;
 @AllArgsConstructor
 public class TranslationController {
 
-    private static final Logger logger = LoggerFactory.getLogger(TranslationController.class);
     final TranslationService translationService;
 
     @PostMapping("/start")

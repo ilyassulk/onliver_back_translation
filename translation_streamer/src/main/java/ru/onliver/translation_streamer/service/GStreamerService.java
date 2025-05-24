@@ -18,6 +18,9 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.freedesktop.gstreamer.Gst;
 import org.freedesktop.gstreamer.Format;
@@ -42,10 +45,42 @@ public class GStreamerService {
     public static class ActiveStream {
         public Pipeline pipeline;
         final String ingressId;
+        private final ReentrantLock stopLock = new ReentrantLock();
+        public volatile boolean isStopping = false;
+        private volatile boolean errorHandled = false; // Флаг для предотвращения повторной обработки ошибок
 
         ActiveStream(Pipeline pipeline, String ingressId) {
             this.pipeline = pipeline;
             this.ingressId = ingressId;
+        }
+        
+        public boolean tryLockForStopping() {
+            if (stopLock.tryLock()) {
+                if (!isStopping) {
+                    isStopping = true;
+                    return true;
+                } else {
+                    stopLock.unlock();
+                    return false;
+                }
+            }
+            return false;
+        }
+        
+        public void unlockAfterStopping() {
+            try {
+                stopLock.unlock();
+            } catch (IllegalMonitorStateException e) {
+                // Уже разблокирован
+            }
+        }
+        
+        public boolean markErrorHandled() {
+            if (!errorHandled) {
+                errorHandled = true;
+                return true; // Первый раз обрабатываем ошибку
+            }
+            return false; // Ошибка уже была обработана
         }
     }
      final Map<String, ActiveStream> activeStreams = new ConcurrentHashMap<>();
@@ -69,9 +104,44 @@ public class GStreamerService {
 
     @PreDestroy
     public void deinitializeGStreamer() {
-        activeStreams.keySet().forEach(this::stopTranslationInternal);
-        Gst.deinit();
-        logger.info("GStreamer deinitialized.");
+        logger.info("Starting GStreamer deinitialization...");
+        
+        // Создаем копию ключей для избежания ConcurrentModificationException
+        Set<String> roomNames = new HashSet<>(activeStreams.keySet());
+        
+        for (String roomName : roomNames) {
+            try {
+                stopTranslationInternal(roomName);
+            } catch (Exception e) {
+                logger.error("Error stopping translation for room {} during shutdown: {}", roomName, e);
+            }
+        }
+        
+        // Ждем завершения всех операций остановки
+        int maxWaitSeconds = 10;
+        int waitedSeconds = 0;
+        while (!activeStreams.isEmpty() && waitedSeconds < maxWaitSeconds) {
+            try {
+                Thread.sleep(1000);
+                waitedSeconds++;
+                logger.debug("Waiting for {} active streams to stop... ({}s)", activeStreams.size(), waitedSeconds);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        
+        if (!activeStreams.isEmpty()) {
+            logger.warn("Force stopping {} remaining streams during shutdown", activeStreams.size());
+            activeStreams.clear();
+        }
+        
+        try {
+            Gst.deinit();
+            logger.info("GStreamer deinitialized successfully.");
+        } catch (Exception e) {
+            logger.error("Error during GStreamer deinitialization", e);
+        }
     }
 
     public void startTranslation(TranslationRequest request) {
@@ -102,8 +172,12 @@ public class GStreamerService {
         }
 
         String ingressURL = ingressInfo.getUrl() +"/"+ ingressInfo.getStreamKey();
+        
+        // Создаем GStreamer pipeline с отключенной строгой проверкой SSL сертификатов
+        // ssl-strict=false нужен для работы с самоподписанными сертификатами или 
+        // проблемными TLS настройками серверов
         String pipelineDescription = String.format(
-                "souphttpsrc location=\"%s\" ! decodebin name=dec " +
+                "souphttpsrc ssl-strict=false location=\"%s\" ! decodebin name=dec " +
                 "dec. ! queue ! videoconvert ! x264enc tune=zerolatency bitrate=1000 ! " +
                 "h264parse ! queue ! mux. " +
                 "dec. ! queue ! audioconvert ! audioresample ! voaacenc bitrate=128000 ! " +
@@ -127,15 +201,53 @@ public class GStreamerService {
             final String currentIngressId = ingressInfo.getIngressId();
 
             pipeline.getBus().connect((Bus.EOS) source -> {
-                logger.info("End-Of-Stream reached for room: {}", source.getName());
-                translationProducerService.publishTranslationEndPlannedEvent(roomName);
-                stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
+                try {
+                    String sourceName = getSafeRoomName(source);
+                    logger.info("End-Of-Stream reached for room: {}", sourceName);
+                    
+                    // Проверяем, что stream еще активен
+                    ActiveStream activeStream = activeStreams.get(sourceName);
+                    if (activeStream != null && !activeStream.isStopping) {
+                        translationProducerService.publishTranslationEndPlannedEvent(roomName);
+                        stopTranslationInternal(sourceName);
+                    }
+                } catch (Exception e) {
+                    String sourceName = getSafeRoomName(source);
+                    logger.error("Error handling EOS event for room: {}", sourceName, e);
+                    // Даже при ошибке пытаемся очистить ресурсы
+                    try {
+                        stopTranslationInternal(sourceName);
+                    } catch (Exception cleanup) {
+                        logger.error("Failed to cleanup resources after EOS error for room: {}", sourceName, cleanup);
+                    }
+                }
             });
 
             pipeline.getBus().connect((Bus.ERROR) (source, code, message) -> {
-                logger.error("GStreamer error for room {}: code={}, message={}", source.getName(), code, message);
-                translationProducerService.publishTranslationEndEmergencyEvent(roomName);
-                stopTranslationInternal(source.getName()); // Останавливаем и удаляем Ingress
+                try {
+                    String sourceName = getSafeRoomName(source);
+                    logger.error("GStreamer error for room {}: code={}, message={}", sourceName, code, message);
+                    
+                    // Проверяем, обрабатывалась ли уже ошибка для этого стрима
+                    ActiveStream activeStream = activeStreams.get(sourceName);
+                    if (activeStream != null && activeStream.markErrorHandled()) {
+                        // Это первая ошибка для данного стрима - обрабатываем
+                        translationProducerService.publishTranslationEndEmergencyEvent(roomName);
+                        stopTranslationInternal(sourceName);
+                    } else {
+                        // Ошибка уже обрабатывалась или стрим не найден - просто логируем
+                        logger.debug("Additional error for room {} (already handled): code={}, message={}", sourceName, code, message);
+                    }
+                } catch (Exception e) {
+                    String sourceName = getSafeRoomName(source);
+                    logger.error("Error handling ERROR event for room: {}", sourceName, e);
+                    // Даже при ошибке пытаемся очистить ресурсы если еще не очищали
+                    try {
+                        stopTranslationInternal(sourceName);
+                    } catch (Exception cleanup) {
+                        logger.error("Failed to cleanup resources after ERROR event for room: {}", sourceName, cleanup);
+                    }
+                }
             });
 
             // Запускаем пайплайн
@@ -217,26 +329,77 @@ public class GStreamerService {
     }
 
     private void stopTranslationInternal(String roomName) {
-        ActiveStream activeStream = activeStreams.remove(roomName);
-        if (activeStream != null) {
+        if (roomName == null || roomName.trim().isEmpty()) {
+            logger.warn("Cannot stop translation: roomName is null or empty");
+            return;
+        }
+        
+        ActiveStream activeStream = activeStreams.get(roomName);
+        if (activeStream == null) {
+            logger.debug("Stop command for room {} received, but no active stream found (already stopped?).", roomName);
+            return;
+        }
+        
+        // Используем блокировку для предотвращения одновременных остановок
+        if (!activeStream.tryLockForStopping()) {
+            logger.debug("Stop already in progress for room: {}", roomName);
+            return;
+        }
+        
+        try {
+            // Удаляем из активных стримов ПОСЛЕ получения блокировки
+            activeStream = activeStreams.remove(roomName);
+            if (activeStream == null) {
+                logger.debug("Stream for room {} was already removed during stop process", roomName);
+                return;
+            }
+            
             Pipeline pipeline = activeStream.pipeline;
             String ingressId = activeStream.ingressId;
+            
             logger.info("Stopping pipeline and cleaning up resources for room: {}, Ingress ID: {}", roomName, ingressId);
-            try {
-                StateChangeReturn stateChange = pipeline.stop();
-                logger.info("Pipeline stop command issued for room: {}. Result: {}", roomName, stateChange);
-                pipeline.dispose();
-                logger.info("Pipeline disposed for room: {}", roomName);
-            } catch (Exception e) {
-                logger.error("Error during stopping/disposing pipeline for room: {}", roomName, e);
+            
+            // 1. Останавливаем pipeline
+            if (pipeline != null) {
+                try {
+                    State currentState = pipeline.getState();
+                    if (currentState != State.NULL && currentState != State.VOID_PENDING) {
+                        StateChangeReturn stateChange = pipeline.stop();
+                        logger.info("Pipeline stop command issued for room: {}. Current state: {}, Result: {}", roomName, currentState, stateChange);
+                        
+                        // Ждем немного для корректной остановки, но не блокируем надолго
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    } else {
+                        logger.debug("Pipeline for room {} already in stopped state: {}", roomName, currentState);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error stopping pipeline for room: {}", roomName, e);
+                }
+                
+                // 2. Освобождаем pipeline
+                try {
+                    pipeline.dispose();
+                    logger.info("Pipeline disposed for room: {}", roomName);
+                } catch (Exception e) {
+                    logger.error("Error disposing pipeline for room: {}", roomName, e);
+                }
             }
-
-            // Удаляем LiveKit Ingress
-            if (ingressId != null) {
-                liveKitService.deleteIngress(ingressId);
+            
+            // 3. Удаляем LiveKit Ingress (даже если pipeline не удалось остановить)
+            if (ingressId != null && !ingressId.trim().isEmpty()) {
+                try {
+                    liveKitService.deleteIngress(ingressId);
+                } catch (Exception e) {
+                    logger.error("Error deleting Ingress {} for room: {}", ingressId, roomName, e);
+                }
             }
-        } else {
-             logger.debug("Stop command for room {} received, but no active stream found (already stopped?).", roomName);
+            
+        } finally {
+            activeStream.unlockAfterStopping();
         }
     }
 
@@ -255,5 +418,18 @@ public class GStreamerService {
 
     public boolean isManagingStream(String roomName) {
         return activeStreams.containsKey(roomName);
+    }
+
+    /**
+     * Безопасно получает имя pipeline или room name
+     */
+    private String getSafeRoomName(GstObject source) {
+        try {
+            String sourceName = source.getName();
+            return sourceName != null ? sourceName : "unknown";
+        } catch (Exception e) {
+            logger.debug("Failed to get source name: {}", e.getMessage());
+            return "unknown";
+        }
     }
 }
